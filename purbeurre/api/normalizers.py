@@ -1,3 +1,6 @@
+from pprint import pprint
+import json
+
 fake_data = [
     {
         "categories": "Beverages,Waters,Spring waters,Mineral waters,Natural mineral waters",
@@ -13,7 +16,7 @@ fake_data = [
         "code": "7622210449283",
         "generic_name": "BISCUITS FOURRÉS (35%) PARFUM CHOCOLAT",
         "nutriscore_grade": "d",
-        "product_name": "",  # "Prince Chocolat",
+        "product_name": "Prince Chocolat",
         "stores": "Carrefour Market,Magasins U,Auchan,Intermarché,Carrefour,Casino,Leclerc,Cora,Bi1, carrefour.fr",
         "url": "https://fr.openfoodfacts.org/produit/7622210449283/prince-chocolat-lu",
     },
@@ -36,14 +39,6 @@ fake_data = [
         "url": "https://fr.openfoodfacts.org/produit/3175680011480/sesame-gerble",
     },
     {
-        "categories": "Snacks,Snacks sucrés,Cacao et dérivés,Chocolats,Chocolats noirs,Chocolat noir en tablette extra dégustation à 70% de cacao minimum",
-        "code": "3046920022651",
-        "nutriscore_grade": "e",
-        "product_name": "Excellence 70% Cacao Noir Intense",
-        "stores": "Magasins U,Carrefour, carrefour.fr",
-        "url": "https://fr.openfoodfacts.org/produit/3046920022651/excellence-70-cacao-noir-intense-lindt",
-    },
-    {
         "categories": "Cereal clusters with nuts",
         "code": "3168930010265",
         "generic_name": "Pépites de céréales croustillantes avec Mélange de Noix",
@@ -55,67 +50,49 @@ fake_data = [
 ]
 
 
-def validate_fields_are_present_in_product(product):
+def transform_fields_into_lowercase_letters(product):
     fields = {
-        "code",
         "product_name",
         "categories",
         "stores",
         "nutriscore_grade",
-        "url",
-        "generic_name",
-    }
-    if fields - product.keys():
-        return False
-    return True
-
-
-def validate_fields_are_not_empty_in_product(product):
-    fields = {
-        "code",
-        "product_name",
-        "categories",
-        "stores",
-        "nutriscore_grade",
-        "url",
         "generic_name",
     }
     for field in fields:
-        if isinstance(product[field], str) and not product[field].strip():
-            return False
-    return True
+        product[field] = product[field].lower()
 
 
-class ProductValidator:
-    """Objet responsable de filtrer les produits contenues une liste selon
-    certains critères."""
+def transform_fields_into_lists(product):
+    fields = {"categories", "stores"}
+    for field in fields:
+        product[field] = [
+            element.strip() for element in product[field].split(",")
+        ]
 
-    validator_functions = [
-        validate_fields_are_present_in_product,
-        validate_fields_are_not_empty_in_product,
+
+class ProductNormalizer:
+    """Objet responsable de normaliser les données pour chaque produit reçu de
+    l'API."""
+
+    normalizer_functions = [
+        transform_fields_into_lowercase_letters,
+        transform_fields_into_lists,
     ]
 
-    def is_valid(self, product):
-        """Retourne True si le produit passé en argument est considéré comme
-        valide."""
-        for function in self.validator_functions:
-            if not function(product):
-                return False
-        return True
-
-    def clean(self, products):
-        """Supprime les produits non valides de la liste products."""
-        cleaned_data = []
+    def normalize(self, products):
+        """Modifie les dictionnaires de products pour normaliser les données
+        qu'ils contiennent."""
         for product in products:
-            if self.is_valid(product):
-                cleaned_data.append(product)
-        return cleaned_data
+            for fonction in self.normalizer_functions:
+                fonction(product)
 
 
 def test():
-    validator = ProductValidator()
-    products = validator.clean(fake_data)
-    print(len(products))
+    normalizer = ProductNormalizer()
+    normalizer.normalize(fake_data)
+
+    with open("mesdonnee.json", "w") as json_file:
+        json.dump(fake_data, json_file, indent=4)
 
 
 if __name__ == '__main__':
